@@ -7,6 +7,8 @@ repeatable while sequential seeds produce distinct variations for sound banks.
 
 Catalog task: `ART-036`. Part of [thousand](../../README.md).
 
+**[Open the sound editor](https://jesserweigel.github.io/sfxforge/)**
+
 ## What this is
 
 The project includes:
