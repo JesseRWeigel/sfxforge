@@ -430,14 +430,40 @@ def export_bank(
     """Write a directory of WAV files plus a manifest and return its path."""
     if not 1 <= count <= 256:
         raise ValueError("bank count must be between 1 and 256")
+    # Validate the sample rate BEFORE touching the filesystem. It used to be checked only
+    # once rendering began, by which point the previous bank's WAV files had already been
+    # deleted, so `--sample-rate 100` destroyed an existing bank and then reported an error.
+    # A rejected call must leave the destination exactly as it found it.
+    if not MIN_SAMPLE_RATE <= sample_rate <= MAX_SAMPLE_RATE:
+        raise ValueError(
+            f"sample rate must be between {MIN_SAMPLE_RATE} and {MAX_SAMPLE_RATE}")
     destination_path = Path(destination)
     destination_path.mkdir(parents=True, exist_ok=True)
     parameter_values = _resolved_parameters(kind, parameters)
     old_manifest_path = destination_path / "manifest.json"
-    try:
-        old_manifest = json.loads(old_manifest_path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
-        old_manifest = {}
+    # A missing manifest means a fresh directory and is fine. A manifest that exists but
+    # cannot be parsed is a different fact: the directory holds WAV files this function
+    # cannot account for, so cleaning up "the old bank" would leave orphans behind while the
+    # new manifest claimed to describe the whole directory. Treating corruption as absence
+    # silently produced exactly that.
+    old_manifest: dict = {}
+    if old_manifest_path.exists():
+        try:
+            old_manifest = json.loads(old_manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as err:
+            raise ValueError(
+                f"{old_manifest_path} exists but is not valid JSON ({err}). Refusing to "
+                "overwrite a bank whose contents cannot be accounted for. Delete the "
+                "directory to start clean, or repair the manifest."
+            ) from err
+        except OSError as err:
+            raise ValueError(
+                f"{old_manifest_path} exists but could not be read ({err})."
+            ) from err
+        if not isinstance(old_manifest, dict):
+            raise ValueError(
+                f"{old_manifest_path} does not contain a JSON object. Refusing to overwrite "
+                "a bank whose contents cannot be accounted for.")
     old_files = old_manifest.get("files", []) if isinstance(old_manifest, dict) else []
     if isinstance(old_files, list):
         for item in old_files:

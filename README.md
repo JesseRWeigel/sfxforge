@@ -7,7 +7,12 @@ repeatable while sequential seeds produce distinct variations for sound banks.
 
 Catalog task: `ART-036`. Part of [thousand](../../README.md).
 
-**[Open the sound editor](https://jesserweigel.github.io/sfxforge/)**
+**[Read this on the web](https://jesserweigel.github.io/sfxforge/)**
+
+The browser editor is a front end for the local Python server and cannot run on a static
+host, because synthesis happens in Python. Run `python3 -m sfxforge serve` and open
+`http://localhost:8000`. An earlier version of the Pages site advertised a hosted editor
+that could not work; the link is gone rather than left to disappoint.
 
 ## What this is
 
@@ -77,6 +82,30 @@ The tests exercise the DSP primitives, all effect families, every footstep surfa
 seed determinism, variation uniqueness, WAV encoding, bank manifests, validation,
 static editor assets, and the HTTP routes. The smoke test drives the CLI and parses
 its generated WAV files and ZIP bank.
+
+## Defects found by independent review and fixed
+
+A reviewer that did not build this audited it and found two ordering bugs where a rejected call
+did damage before it failed. Both now have regression tests, including one asserting the normal
+path still works, so the guards cannot be "fixed" by disabling the behaviour they protect.
+
+**An invalid sample rate destroyed an existing bank.** `export_bank` created the destination and
+deleted every WAV named in the old manifest, and only validated the sample rate once rendering
+began. `--sample-rate 100` against a three-file bank deleted all three files and then reported an
+error, leaving a manifest still claiming three files existed. All input validation now happens
+before anything touches the filesystem.
+
+**A corrupt manifest was silently treated as absent.** A manifest that existed but could not be
+parsed fell into the same branch as no manifest at all, so a re-export left the old WAV files
+orphaned on disk while writing a new manifest that claimed to describe the whole directory. That
+now fails loudly and touches nothing, because a directory holding files this function cannot
+account for is not a directory it should be cleaning up.
+
+**The hosted editor claim was withdrawn.** The Pages site briefly advertised a browser editor.
+The editor is a front end for the local Python server, synthesis happens in Python, and the
+copied assets used root-relative paths that resolved outside the published subdirectory. Rather
+than ship a link to a page that could not work, the link is gone and the README says the editor
+is local. Run `python3 -m sfxforge serve` and open `http://localhost:8000`.
 
 ## Status
 

@@ -1,3 +1,4 @@
+import pathlib
 import hashlib
 import io
 import json
@@ -200,3 +201,65 @@ class BankTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class DestructiveOrderingTests(unittest.TestCase):
+    """A rejected call must leave the destination exactly as it found it.
+
+    Both cases below were found by an independent review. export_bank used to create the
+    destination and delete every WAV named in the old manifest BEFORE validating the sample
+    rate, so `--sample-rate 100` destroyed an existing bank and then reported an error. And a
+    manifest that existed but could not be parsed was treated as absent, so a re-export left
+    the old WAV files orphaned while writing a manifest that claimed to describe the directory.
+    """
+
+    def test_invalid_sample_rate_does_not_delete_the_existing_bank(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = pathlib.Path(tmp) / "bank"
+            export_bank("footstep", 3, d, seed=1)
+            before = sorted(f.name for f in d.glob("*.wav"))
+            self.assertEqual(3, len(before))
+            with self.assertRaises(ValueError):
+                export_bank("footstep", 3, d, seed=1, sample_rate=100)
+            after = sorted(f.name for f in d.glob("*.wav"))
+            self.assertEqual(before, after,
+                             "a rejected export destroyed the existing bank")
+
+    def test_unknown_effect_does_not_delete_the_existing_bank(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = pathlib.Path(tmp) / "bank"
+            export_bank("footstep", 2, d, seed=1)
+            before = sorted(f.name for f in d.glob("*.wav"))
+            with self.assertRaises(ValueError):
+                export_bank("not-a-real-effect", 2, d, seed=1)
+            self.assertEqual(before, sorted(f.name for f in d.glob("*.wav")))
+
+    def test_corrupt_manifest_is_refused_rather_than_ignored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = pathlib.Path(tmp) / "bank"
+            export_bank("footstep", 3, d, seed=1)
+            (d / "manifest.json").write_text("{ not json at all", encoding="utf-8")
+            with self.assertRaises(ValueError) as ctx:
+                export_bank("footstep", 1, d, seed=1)
+            self.assertIn("not valid JSON", str(ctx.exception))
+            # and the files it could not account for are still there, untouched
+            self.assertEqual(3, len(list(d.glob("*.wav"))),
+                             "a refused export must not delete files it cannot account for")
+
+    def test_a_manifest_that_is_not_an_object_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = pathlib.Path(tmp) / "bank"
+            export_bank("footstep", 2, d, seed=1)
+            (d / "manifest.json").write_text("[1, 2, 3]", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                export_bank("footstep", 1, d, seed=1)
+
+    def test_a_valid_reexport_still_replaces_the_old_bank(self):
+        # The guard must not break the normal path: a good manifest still gets cleaned up.
+        with tempfile.TemporaryDirectory() as tmp:
+            d = pathlib.Path(tmp) / "bank"
+            export_bank("footstep", 5, d, seed=1)
+            self.assertEqual(5, len(list(d.glob("*.wav"))))
+            export_bank("footstep", 2, d, seed=1)
+            self.assertEqual(2, len(list(d.glob("*.wav"))),
+                             "a valid re-export should replace, not accumulate")
+
