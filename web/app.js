@@ -8,6 +8,8 @@ const state = {
   wavBlob: null,
   wavUrl: null,
   audio: null,
+  revision: 0,
+  renderRequest: 0,
 };
 
 const icons = {
@@ -100,8 +102,7 @@ function setPreset(kind) {
   elements.effectName.textContent = preset.label;
   elements.effectDescription.textContent = preset.description;
   elements.technique.textContent = techniqueLabels[kind];
-  clearRenderedSound();
-  drawPlaceholder();
+  invalidateRenderedSound("Preset ready.");
 }
 
 function buildVoiceButtons() {
@@ -142,6 +143,13 @@ function clearRenderedSound() {
   state.wavUrl = null;
   state.audio = null;
   elements.downloadOne.disabled = true;
+}
+
+function invalidateRenderedSound(message) {
+  state.revision += 1;
+  clearRenderedSound();
+  drawPlaceholder();
+  setStatus(message);
 }
 
 function canvasContext() {
@@ -198,27 +206,35 @@ function drawWaveform(buffer) {
 }
 
 async function renderSound(playAfter = false) {
+  const revision = state.revision;
+  const requestId = ++state.renderRequest;
+  const payload = parameterPayload();
   elements.play.classList.add("busy");
   setStatus("Synthesizing with the local CPU engine...");
   try {
     const response = await fetch("/api/render", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parameterPayload()),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) {
       const payload = await response.json();
       throw new Error(payload.error || `render failed with status ${response.status}`);
     }
+    const wavBlob = await response.blob();
+    const audioContext = new AudioContext();
+    const audioData = await wavBlob.arrayBuffer();
+    const decoded = await audioContext.decodeAudioData(audioData.slice(0));
+    await audioContext.close();
+    if (revision !== state.revision || requestId !== state.renderRequest) {
+      setStatus("Settings changed. Render a fresh take.");
+      return;
+    }
     clearRenderedSound();
-    state.wavBlob = await response.blob();
+    state.wavBlob = wavBlob;
     state.wavUrl = URL.createObjectURL(state.wavBlob);
     state.audio = new Audio(state.wavUrl);
-    const audioContext = new AudioContext();
-    const audioData = await state.wavBlob.arrayBuffer();
-    const decoded = await audioContext.decodeAudioData(audioData.slice(0));
     drawWaveform(decoded);
-    await audioContext.close();
     elements.downloadOne.disabled = false;
     setStatus(`Rendered ${state.kind} seed ${state.seed} · ${(state.wavBlob.size / 1024).toFixed(1)} KB`);
     if (playAfter) {
@@ -270,16 +286,16 @@ function bindEvents() {
   [elements.duration, elements.brightness, elements.resonance, elements.variation].forEach((input) => {
     input.addEventListener("input", () => {
       updateRange(input);
-      clearRenderedSound();
+      invalidateRenderedSound("Settings changed. Render a fresh take.");
     });
   });
-  elements.surface.addEventListener("change", clearRenderedSound);
+  elements.surface.addEventListener("change", () => {
+    invalidateRenderedSound("Surface changed. Render a fresh take.");
+  });
   elements.randomize.addEventListener("click", () => {
     state.seed = Math.floor(Math.random() * 1_000_000);
     elements.seedReadout.value = `Seed ${state.seed}`;
-    clearRenderedSound();
-    drawPlaceholder();
-    setStatus("New seed ready.");
+    invalidateRenderedSound("New seed ready.");
   });
   elements.render.addEventListener("click", () => renderSound(false));
   elements.play.addEventListener("click", async () => {

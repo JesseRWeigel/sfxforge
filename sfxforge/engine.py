@@ -123,6 +123,28 @@ def _fade_and_normalize(samples: list[float], sample_rate: int) -> list[float]:
     return samples
 
 
+def _resolved_parameters(
+    kind: str,
+    parameters: dict[str, float | str] | None,
+) -> dict[str, float | str]:
+    if kind not in PRESETS:
+        raise ValueError(f"unknown effect kind: {kind}")
+    settings = dict(PRESETS[kind])
+    settings.update(parameters or {})
+    resolved: dict[str, float | str] = {
+        "duration": max(0.03, min(3.0, float(settings["duration"]))),
+        "brightness": _clamp(float(settings["brightness"])),
+        "resonance": _clamp(float(settings["resonance"])),
+        "variation": _clamp(float(settings["variation"])),
+    }
+    if kind == "footstep":
+        surface = str(settings.get("surface", "dirt"))
+        if surface not in SURFACES:
+            raise ValueError(f"unknown surface: {surface}")
+        resolved["surface"] = surface
+    return resolved
+
+
 def _impact(
     length: int,
     rng: random.Random,
@@ -302,20 +324,15 @@ def synthesize(
     parameters: dict[str, float | str] | None = None,
 ) -> list[float]:
     """Synthesize one mono sound effect as floating-point samples."""
-    if kind not in PRESETS:
-        raise ValueError(f"unknown effect kind: {kind}")
     if not MIN_SAMPLE_RATE <= sample_rate <= MAX_SAMPLE_RATE:
         raise ValueError(f"sample rate must be between {MIN_SAMPLE_RATE} and {MAX_SAMPLE_RATE}")
 
-    settings = dict(PRESETS[kind])
-    settings.update(parameters or {})
-    duration = max(0.03, min(3.0, float(settings["duration"])))
-    brightness = _clamp(float(settings["brightness"]))
-    resonance = _clamp(float(settings["resonance"]))
-    variation = _clamp(float(settings["variation"]))
+    settings = _resolved_parameters(kind, parameters)
+    duration = float(settings["duration"])
+    brightness = float(settings["brightness"])
+    resonance = float(settings["resonance"])
+    variation = float(settings["variation"])
     surface = str(settings.get("surface", "dirt"))
-    if surface not in SURFACES:
-        raise ValueError(f"unknown surface: {surface}")
 
     length = max(1, int(round(duration * sample_rate)))
     rng = random.Random(int(seed))
@@ -375,7 +392,7 @@ def build_bank_archive(
     """Build an in-memory ZIP bank containing WAV files and a JSON manifest."""
     if not 1 <= count <= 256:
         raise ValueError("bank count must be between 1 and 256")
-    parameter_values = dict(parameters or {})
+    parameter_values = _resolved_parameters(kind, parameters)
     manifest = {
         "format": "sfxforge-bank-v1",
         "kind": kind,
@@ -415,7 +432,20 @@ def export_bank(
         raise ValueError("bank count must be between 1 and 256")
     destination_path = Path(destination)
     destination_path.mkdir(parents=True, exist_ok=True)
-    parameter_values = dict(parameters or {})
+    parameter_values = _resolved_parameters(kind, parameters)
+    old_manifest_path = destination_path / "manifest.json"
+    try:
+        old_manifest = json.loads(old_manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+        old_manifest = {}
+    old_files = old_manifest.get("files", []) if isinstance(old_manifest, dict) else []
+    if isinstance(old_files, list):
+        for item in old_files:
+            if not isinstance(item, dict) or not isinstance(item.get("file"), str):
+                continue
+            old_name = Path(item["file"])
+            if old_name.name == str(old_name) and old_name.suffix.lower() == ".wav":
+                (destination_path / old_name).unlink(missing_ok=True)
     manifest = {
         "format": "sfxforge-bank-v1",
         "kind": kind,

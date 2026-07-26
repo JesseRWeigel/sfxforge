@@ -15,6 +15,8 @@ class ServerTests(unittest.TestCase):
         script_response = request("/app.js")
         self.assertEqual(script_response.status, 200)
         self.assertIn(b"/api/render", script_response.body)
+        self.assertIn(b'invalidateRenderedSound("Surface changed.', script_response.body)
+        self.assertIn(b"revision !== state.revision", script_response.body)
 
         preset_response = request("/api/presets")
         self.assertEqual(preset_response.status, 200)

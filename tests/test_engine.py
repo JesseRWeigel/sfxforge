@@ -3,12 +3,15 @@ import io
 import json
 import math
 import random
+import tempfile
 import unittest
 import wave
 import zipfile
+from pathlib import Path
 
 from sfxforge.engine import (
     build_bank_archive,
+    export_bank,
     granular_scatter,
     modal_resonator,
     render_wav_bytes,
@@ -61,6 +64,20 @@ class SynthesisTests(unittest.TestCase):
             for seed in range(20)
         }
         self.assertEqual(len(hashes), 20)
+
+    def test_one_hundred_footsteps_are_distinct(self) -> None:
+        hashes = {
+            hashlib.sha256(
+                render_wav_bytes(
+                    "footstep",
+                    seed=seed,
+                    sample_rate=8_000,
+                    parameters={"duration": 0.04, "surface": "dirt"},
+                )
+            ).hexdigest()
+            for seed in range(100)
+        }
+        self.assertEqual(len(hashes), 100)
 
     def test_every_surface_changes_footstep_audio(self) -> None:
         hashes = {
@@ -136,7 +153,45 @@ class BankTests(unittest.TestCase):
             self.assertEqual(manifest["format"], "sfxforge-bank-v1")
             self.assertEqual(manifest["count"], 4)
             self.assertEqual([item["seed"] for item in manifest["files"]], [250, 251, 252, 253])
+            self.assertEqual(
+                set(manifest["parameters"]),
+                {"duration", "brightness", "resonance", "variation"},
+            )
             self.assertTrue(archive.read("pickup_001.wav").startswith(b"RIFF"))
+
+    def test_directory_reexport_removes_files_from_previous_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "bank"
+            export_bank("impact", 3, destination, seed=10)
+            unrelated = destination / "notes.txt"
+            unrelated.write_text("keep", encoding="utf-8")
+            export_bank("impact", 1, destination, seed=20)
+
+            self.assertEqual(
+                sorted(path.name for path in destination.glob("*.wav")),
+                ["impact_001.wav"],
+            )
+            self.assertEqual(json.loads((destination / "manifest.json").read_text())["count"], 1)
+            self.assertEqual(unrelated.read_text(encoding="utf-8"), "keep")
+
+    def test_manifest_records_effective_clamped_parameters(self) -> None:
+        archive_bytes = build_bank_archive(
+            "footstep",
+            count=1,
+            parameters={"duration": 9, "brightness": -2, "surface": "metal"},
+        )
+        with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+            parameters = json.loads(archive.read("manifest.json"))["parameters"]
+        self.assertEqual(
+            parameters,
+            {
+                "brightness": 0.0,
+                "duration": 3.0,
+                "resonance": PRESETS["footstep"]["resonance"],
+                "surface": "metal",
+                "variation": PRESETS["footstep"]["variation"],
+            },
+        )
 
     def test_bank_size_has_a_safe_limit(self) -> None:
         with self.assertRaisesRegex(ValueError, "between 1 and 256"):

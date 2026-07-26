@@ -83,12 +83,15 @@ Verified with exit code 0 on 2026-07-25. Exact output:
 ```text
 test_archive_contains_wavs_and_seed_manifest (test_engine.BankTests.test_archive_contains_wavs_and_seed_manifest) ... ok
 test_bank_size_has_a_safe_limit (test_engine.BankTests.test_bank_size_has_a_safe_limit) ... ok
+test_directory_reexport_removes_files_from_previous_manifest (test_engine.BankTests.test_directory_reexport_removes_files_from_previous_manifest) ... ok
+test_manifest_records_effective_clamped_parameters (test_engine.BankTests.test_manifest_records_effective_clamped_parameters) ... ok
 test_all_effects_produce_finite_non_silent_audio (test_engine.SynthesisTests.test_all_effects_produce_finite_non_silent_audio) ... ok
 test_different_seeds_produce_distinct_variations (test_engine.SynthesisTests.test_different_seeds_produce_distinct_variations) ... ok
 test_every_surface_changes_footstep_audio (test_engine.SynthesisTests.test_every_surface_changes_footstep_audio) ... ok
 test_granular_scatter_is_seeded_and_populated (test_engine.SynthesisTests.test_granular_scatter_is_seeded_and_populated) ... ok
 test_invalid_effect_surface_and_sample_rate_are_rejected (test_engine.SynthesisTests.test_invalid_effect_surface_and_sample_rate_are_rejected) ... ok
 test_noise_shaping_and_resonator_are_active (test_engine.SynthesisTests.test_noise_shaping_and_resonator_are_active) ... ok
+test_one_hundred_footsteps_are_distinct (test_engine.SynthesisTests.test_one_hundred_footsteps_are_distinct) ... ok
 test_same_seed_produces_identical_wav (test_engine.SynthesisTests.test_same_seed_produces_identical_wav) ... ok
 test_wav_is_mono_16_bit_pcm_at_requested_rate (test_engine.SynthesisTests.test_wav_is_mono_16_bit_pcm_at_requested_rate) ... ok
 test_bad_request_returns_json_error (test_server.ServerTests.test_bad_request_returns_json_error) ... ok
@@ -96,7 +99,7 @@ test_editor_assets_and_preset_api_are_served (test_server.ServerTests.test_edito
 test_render_api_returns_wav_audio (test_server.ServerTests.test_render_api_returns_wav_audio) ... ok
 
 ----------------------------------------------------------------------
-Ran 13 tests in 0.034s
+Ran 16 tests in 0.279s
 
 OK
 SMOKE: CLI rendered valid 44.1 kHz mono PCM WAV
