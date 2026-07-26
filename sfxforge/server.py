@@ -56,7 +56,47 @@ class SFXRequestHandler(BaseHTTPRequestHandler):
         data = (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8")
         self._send_bytes(data, "application/json; charset=utf-8", status)
 
+    def _reject_cross_origin(self) -> str | None:
+        """Return a reason to refuse this request, or None to proceed.
+
+        The server binds 127.0.0.1, which stops other machines but not the browser already
+        running on this one. A page on any site can POST to localhost, and choosing a
+        Content-Type of text/plain keeps the request "simple" so no CORS preflight is sent
+        and the browser never asks permission. /api/bank then performs synchronous synthesis,
+        so a hostile page could drive repeated maximum-size bank generation on the machine of
+        anyone who happens to have the editor running.
+
+        Three checks, each cheap and each closing a distinct route:
+
+        1. Require a JSON Content-Type. This is the load-bearing one, because it makes the
+           request non-simple and forces a preflight the server never answers.
+        2. Refuse a cross-origin Origin header. Browsers always attach Origin to
+           cross-origin requests, so its presence with a foreign value is decisive.
+        3. Check the Host header against the loopback names, which is the standard defence
+           against DNS rebinding pointing an attacker-controlled name at 127.0.0.1.
+        """
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            return (f"Content-Type must be application/json, got {ctype or 'nothing'}. "
+                    "This requirement is what forces a CORS preflight for cross-origin "
+                    "callers.")
+
+        origin = self.headers.get("Origin")
+        if origin:
+            host = urlparse(origin).hostname
+            if host not in ("localhost", "127.0.0.1", "::1", "[::1]"):
+                return f"cross-origin request from {origin} refused"
+
+        host_header = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]")
+        if host_header and host_header not in ("localhost", "127.0.0.1", "::1"):
+            return (f"unexpected Host header {host_header!r}. Only loopback names are "
+                    "served, which blocks DNS rebinding.")
+        return None
+
     def _read_json(self) -> dict[str, Any]:
+        reason = self._reject_cross_origin()
+        if reason is not None:
+            raise PermissionError(reason)
         content_length = int(self.headers.get("Content-Length", "0"))
         if content_length <= 0 or content_length > MAX_REQUEST_BYTES:
             raise ValueError("request body size is invalid")
@@ -116,6 +156,8 @@ class SFXRequestHandler(BaseHTTPRequestHandler):
                 "application/zip",
                 filename=f"{kind}_bank.zip",
             )
+        except PermissionError as error:
+            self._send_json({"error": str(error)}, HTTPStatus.FORBIDDEN)
         except (json.JSONDecodeError, TypeError, ValueError) as error:
             self._send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
 

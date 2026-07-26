@@ -263,17 +263,24 @@ async function exportBank() {
   const count = Number(elements.count.value);
   setStatus(`Synthesizing ${count} variations...`);
   try {
+    // Snapshot the payload AND the effect name together. The request body was already a
+    // snapshot, but the filename below read state.kind at completion time, so starting an
+    // impact export and selecting footstep before it finished downloaded impact audio named
+    // footstep_bank.zip. Only the export button is disabled during the request, so changing
+    // effect mid-flight is a normal thing for someone to do.
+    const payload = { ...parameterPayload(), count };
+    const exportedKind = payload.kind ?? state.kind;
     const response = await fetch("/api/bank", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...parameterPayload(), count }),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) {
       const payload = await response.json();
       throw new Error(payload.error || `bank export failed with status ${response.status}`);
     }
     const archive = await response.blob();
-    downloadBlob(archive, `${state.kind}_bank.zip`);
+    downloadBlob(archive, `${exportedKind}_bank.zip`);
     setStatus(`Exported ${count} repeatable variations · ${(archive.size / 1024).toFixed(1)} KB`);
   } catch (error) {
     setStatus(error.message, true);

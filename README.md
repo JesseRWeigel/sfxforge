@@ -107,6 +107,21 @@ copied assets used root-relative paths that resolved outside the published subdi
 than ship a link to a page that could not work, the link is gone and the README says the editor
 is local. Run `python3 -m sfxforge serve` and open `http://localhost:8000`.
 
+**The local server refused cross-origin requests.** Binding 127.0.0.1 stops other machines but
+not the browser already running on this one. Any page could POST to localhost, and choosing
+`Content-Type: text/plain` keeps the request "simple" so no CORS preflight is sent and the
+browser never asks permission, while `/api/bank` performs synchronous synthesis. Three checks
+now apply: a JSON Content-Type is required, which is the load-bearing one because it forces a
+preflight the server never answers; a cross-origin `Origin` header is refused; and the `Host`
+header must be a loopback name, which blocks DNS rebinding. Five tests cover the refusals and,
+importantly, that a same-origin request and an Origin-less CLI request both still work.
+
+**A bank download could be misnamed.** The request body was snapshotted but the filename read
+the current selection at completion time, so starting an impact export and choosing footstep
+before it finished downloaded impact audio named `footstep_bank.zip`. The effect name is now
+snapshotted with the payload. The single-render path was already correct, because changing any
+setting bumps a revision counter and clears the held blob.
+
 ## Status
 
 Verified with exit code 0 on 2026-07-25. Exact output:
