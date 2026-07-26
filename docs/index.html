@@ -1,0 +1,133 @@
+<title>sfxforge</title>
+<style>
+:root{color-scheme:light;--bg:#FAF9FC;--bg2:#F2F0F7;--ink:#1B1826;--ink2:#4A4459;
+--ink3:#6C6580;--rule:#DDD8E8;--accent:#4A3AA7;--code:#F2F0F7;
+--mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+--sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+@media(prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;
+--bg:#17151C;--bg2:#1F1C27;--ink:#EDE9F5;--ink2:#B9B2C9;--ink3:#948CA6;--rule:#322D3E;
+--accent:#9085E9;--code:#1F1C27}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#17151C;--bg2:#1F1C27;--ink:#EDE9F5;
+--ink2:#B9B2C9;--ink3:#948CA6;--rule:#322D3E;--accent:#9085E9;--code:#1F1C27}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px 90px}
+header{padding:64px 0 28px;border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+color:var(--ink3);margin:0 0 14px}
+h1{font-family:var(--mono);font-weight:600;font-size:clamp(30px,5.5vw,50px);line-height:1.05;
+letter-spacing:-.03em;margin:0 0 14px;text-wrap:balance}
+.tag{font-size:19px;color:var(--ink2);margin:0;max-width:58ch}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.btn{font-family:var(--mono);font-size:13px;text-decoration:none;padding:9px 16px;
+border:1px solid var(--rule);border-radius:3px;color:var(--ink);background:var(--bg2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary:hover{color:var(--bg);opacity:.9}
+h2{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+color:var(--ink3);font-weight:600;margin:44px 0 14px;padding-bottom:8px;
+border-bottom:1px solid var(--rule)}
+h3{font-size:17px;margin:26px 0 8px}
+p,li{color:var(--ink2)}p{max-width:66ch}
+strong{color:var(--ink)}
+a{color:var(--accent)}
+pre{background:var(--code);border:1px solid var(--rule);border-radius:4px;padding:14px 16px;
+overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;color:var(--ink)}
+code{font-family:var(--mono);font-size:.9em;background:var(--code);padding:1px 5px;
+border-radius:3px}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0;display:block;
+overflow-x:auto}
+th,td{text-align:left;padding:8px 14px 8px 0;border-bottom:1px solid var(--rule);
+vertical-align:top}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+color:var(--ink3);font-weight:600;white-space:nowrap}
+blockquote{margin:18px 0;padding:12px 18px;border-left:3px solid var(--accent);
+background:var(--bg2);border-radius:0 4px 4px 0}
+blockquote p{margin:0}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--rule);
+font-size:14px;color:var(--ink3)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div class="wrap">
+<header>
+  <p class="eyebrow">JesseRWeigel &middot; open source</p>
+  <h1>sfxforge</h1>
+  <p class="tag">Procedural game sound effects. No samples, no model weights.</p>
+  <div class="cta">
+    <a class="btn primary" href="./demo/">Open the demo</a>
+    <a class="btn" href="https://github.com/JesseRWeigel/sfxforge">Source on GitHub</a>
+  </div>
+</header>
+<p>SFX Forge is a dependency-free procedural sound-effects synthesizer for game audio. It creates impacts, pickups, UI clicks, and footsteps using shaped noise, damped modal resonators, tonal sweeps, and granular scattering. An integer seed makes every take repeatable while sequential seeds produce distinct variations for sound banks.</p>
+<p>Catalog task: <code>ART-036</code>. Part of <a href="../../README.md">thousand</a>.</p>
+<h2>What this is</h2>
+<p>The project includes:</p>
+<ul><li>A Python synthesis engine that runs on CPU with no model weights</li><li>Four effect families and dirt, grass, wood, metal, and stone footstep surfaces</li><li>Controls for duration, brightness, resonance, variation, seed, and sample rate</li><li>A command-line tool for individual WAV files and bank directories</li><li>A responsive browser editor with waveform preview, playback, WAV download, and ZIP bank export</li><li>JSON manifests that record each bank&#x27;s parameters and per-file seed</li><li>Mono 16-bit PCM WAV output at sample rates from 8 kHz through 96 kHz</li></ul>
+<p>The browser editor and CLI use the same synthesis engine. The careful-engineering assumption for the task is that a browser editor may call a local Python service. This keeps audio generation consistent across batch and interactive workflows.</p>
+<h2>Running it</h2>
+<p>Python 3.10 or newer is required. No package installation is needed.</p>
+<p>Start the browser editor:</p>
+<pre><code>python3 -m sfxforge serve</code></pre>
+<p>Then open <code>http://127.0.0.1:8765</code>.</p>
+<p>Render one effect:</p>
+<pre><code>python3 -m sfxforge render \
+  --kind impact \
+  --seed 36 \
+  --brightness 0.65 \
+  --resonance 0.8 \
+  --output impact.wav</code></pre>
+<p>Export a bank of varied footsteps:</p>
+<pre><code>python3 -m sfxforge bank \
+  --kind footstep \
+  --surface wood \
+  --seed 720 \
+  --count 100 \
+  --output wood-footsteps</code></pre>
+<p>List effect and surface names:</p>
+<pre><code>python3 -m sfxforge list</code></pre>
+<h2>Verification</h2>
+<p>Run from the project root:</p>
+<pre><code>python3 -m unittest discover -s tests -v &amp;&amp; python3 scripts/smoke_test.py</code></pre>
+<p>The tests exercise the DSP primitives, all effect families, every footstep surface, seed determinism, variation uniqueness, WAV encoding, bank manifests, validation, static editor assets, and the HTTP routes. The smoke test drives the CLI and parses its generated WAV files and ZIP bank.</p>
+<h2>Status</h2>
+<p>Verified with exit code 0 on 2026-07-25. Exact output:</p>
+<pre><code>test_archive_contains_wavs_and_seed_manifest (test_engine.BankTests.test_archive_contains_wavs_and_seed_manifest) ... ok
+test_bank_size_has_a_safe_limit (test_engine.BankTests.test_bank_size_has_a_safe_limit) ... ok
+test_directory_reexport_removes_files_from_previous_manifest (test_engine.BankTests.test_directory_reexport_removes_files_from_previous_manifest) ... ok
+test_manifest_records_effective_clamped_parameters (test_engine.BankTests.test_manifest_records_effective_clamped_parameters) ... ok
+test_all_effects_produce_finite_non_silent_audio (test_engine.SynthesisTests.test_all_effects_produce_finite_non_silent_audio) ... ok
+test_different_seeds_produce_distinct_variations (test_engine.SynthesisTests.test_different_seeds_produce_distinct_variations) ... ok
+test_every_surface_changes_footstep_audio (test_engine.SynthesisTests.test_every_surface_changes_footstep_audio) ... ok
+test_granular_scatter_is_seeded_and_populated (test_engine.SynthesisTests.test_granular_scatter_is_seeded_and_populated) ... ok
+test_invalid_effect_surface_and_sample_rate_are_rejected (test_engine.SynthesisTests.test_invalid_effect_surface_and_sample_rate_are_rejected) ... ok
+test_noise_shaping_and_resonator_are_active (test_engine.SynthesisTests.test_noise_shaping_and_resonator_are_active) ... ok
+test_one_hundred_footsteps_are_distinct (test_engine.SynthesisTests.test_one_hundred_footsteps_are_distinct) ... ok
+test_same_seed_produces_identical_wav (test_engine.SynthesisTests.test_same_seed_produces_identical_wav) ... ok
+test_wav_is_mono_16_bit_pcm_at_requested_rate (test_engine.SynthesisTests.test_wav_is_mono_16_bit_pcm_at_requested_rate) ... ok
+test_bad_request_returns_json_error (test_server.ServerTests.test_bad_request_returns_json_error) ... ok
+test_editor_assets_and_preset_api_are_served (test_server.ServerTests.test_editor_assets_and_preset_api_are_served) ... ok
+test_render_api_returns_wav_audio (test_server.ServerTests.test_render_api_returns_wav_audio) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.279s
+
+OK
+SMOKE: CLI rendered valid 44.1 kHz mono PCM WAV
+SMOKE: seed 3600 reproduced byte-identical audio
+SMOKE: WAV bank exported 6 distinct seeded wood footsteps
+SMOKE: browser assets, WAV route, and ZIP bank route responded correctly
+SMOKE: PASS</code></pre>
+<h2>Unfinished</h2>
+<ul><li>Live TCP binding is outside the verification command because the builder sandbox</li></ul>
+<p>  denies socket creation. The real HTTP request handler is exercised with complete   HTTP request and response bytes through an in-memory connection.</p>
+<ul><li>Stereo, 24-bit PCM, and compressed audio exports are not implemented.</li><li>The editor has fixed synthesis families. It does not yet expose custom modal</li></ul>
+<p>  frequency lists or a visual grain sequencer.</p>
+<footer>
+  <p>Part of <a href="https://github.com/JesseRWeigel/722-things-to-build">722 things to
+  build</a>, a catalog of scoped projects. Built and verified by an agent fleet; every
+  project ships with a verify command whose real exit code decides whether it counts
+  as done.</p>
+</footer>
+</div>
