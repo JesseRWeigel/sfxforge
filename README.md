@@ -5,7 +5,7 @@ It creates impacts, pickups, UI clicks, and footsteps using shaped noise, damped
 resonators, tonal sweeps, and granular scattering. An integer seed makes every take
 repeatable while sequential seeds produce distinct variations for sound banks.
 
-Catalog task: `ART-036`. Part of [thousand](https://github.com/JesseRWeigel/722-things-to-build).
+Catalog task: `ART-036`. Part of [722 things to build](https://github.com/JesseRWeigel/722-things-to-build).
 
 **[Read this on the web](https://jesserweigel.github.io/sfxforge/)**
 
